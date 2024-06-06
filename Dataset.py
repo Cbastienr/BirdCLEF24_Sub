@@ -63,8 +63,8 @@ class BirdCLEFDataset(Dataset):
         return self.annotations.iloc[index]['encoded_label']
 
 if __name__ == "__main__":
-    ANNOTATIONS_FILE = "/kaggle/input/birdclef-2024/train_metadata.csv"
-    AUDIO_DIR = "/kaggle/input/birdclef-2024/train_audio"
+    ANNOTATIONS_FILE = "path/kaggle"
+    AUDIO_DIR = "path/kaggle"
     SAMPLE_RATE = 22050
     NUM_SAMPLES = 22050
 
