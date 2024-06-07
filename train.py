@@ -1,9 +1,11 @@
 import torch.optim as optim
 from torch.utils.data import DataLoader
 from torch import nn
+import matplotlib.pyplot as plt
 
 def train_model(model, dataloader, criterion, optimizer, device, epochs=10):
     model.train()
+    losses = []
     for epoch in range(epochs):
         running_loss = 0.0
         for signals, labels in dataloader:
@@ -17,7 +19,9 @@ def train_model(model, dataloader, criterion, optimizer, device, epochs=10):
 
             running_loss += loss.item() * signals.size(0)
         epoch_loss = running_loss / len(dataloader.dataset)
+        losses.append(epoch_loss)
         print(f"Epoch {epoch+1}/{epochs}, Loss: {epoch_loss:.4f}")
+    return losses
 
 def predict(model, dataloader, device):
     model.eval()  # mode d'évaluation
@@ -33,8 +37,8 @@ def predict(model, dataloader, device):
     return predictions, actuals
 
 if __name__ == "__main__":
-    ANNOTATIONS_FILE = "path/kaggle"
-    AUDIO_DIR = "path/kaggle"
+    ANNOTATIONS_FILE = "/kaggle/input/birdclef-2024/train_metadata.csv"
+    AUDIO_DIR = "/kaggle/input/birdclef-2024/train_audio"
     SAMPLE_RATE = 22050
     NUM_SAMPLES = 22050
 
@@ -46,7 +50,7 @@ if __name__ == "__main__":
     )
 
     dataset = BirdCLEFDataset(ANNOTATIONS_FILE, AUDIO_DIR, mel_spectrogram, SAMPLE_RATE, NUM_SAMPLES)
-    dataloader = DataLoader(dataset, batch_size=32, shuffle=True)
+    dataloader = DataLoader(dataset, batch_size=32, shuffle=True, num_workers=4)  # Utilisation du chargement asynchrone des données
 
     num_classes = dataset.num_classes
     cnn = CNNNetwork(num_classes=num_classes)
@@ -54,15 +58,37 @@ if __name__ == "__main__":
     cnn.to(device)
 
     learning_rate = 0.001
-    epochs = 10
+    epochs = 5
 
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(cnn.parameters(), lr=learning_rate)
 
     # Train the model
-    train_model(cnn, dataloader, criterion, optimizer, device, epochs)
+    losses = train_model(cnn, dataloader, criterion, optimizer, device, epochs)
 
     # Predictions
     predictions, actuals = predict(cnn, dataloader, device)
     print(f"Predictions: {predictions[:10]}")
     print(f"Actuals: {actuals[:10]}")
+
+    # Calculate accuracy
+    accuracy = sum([1 for p, a in zip(predictions, actuals) if p == a]) / len(actuals)
+    print(f"Accuracy: {accuracy:.4f}")
+
+    # Plot the loss over epochs
+    plt.figure(figsize=(10, 5))
+    plt.plot(range(1, epochs+1), losses, marker='o', label='Training Loss')
+    plt.xlabel('Epoch')
+    plt.ylabel('Loss')
+    plt.title('Training Loss Over Epochs')
+    plt.legend()
+    plt.show()
+
+    # Predictions vs actuals
+    plt.figure(figsize=(10, 5))
+    plt.scatter(actuals[:100], predictions[:100], marker='o', label='Predictions vs Actuals')
+    plt.xlabel('Actual Labels')
+    plt.ylabel('Predicted Labels')
+    plt.title('Predictions vs Actual Labels (First 100 samples)')
+    plt.legend()
+    plt.show()
